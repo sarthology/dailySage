@@ -7,7 +7,13 @@ export type WidgetType =
   | "stoic_meditation"
   | "thought_experiment"
   | "daily_maxim"
-  | "progress_visualization";
+  | "progress_visualization"
+  | "obstacle_reframe"
+  | "values_wheel"
+  | "cognitive_distortion"
+  | "quote_challenge"
+  | "weekly_review"
+  | "argument_mapper";
 
 export interface WidgetConfig {
   type: WidgetType;

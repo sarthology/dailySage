@@ -360,6 +360,21 @@ body::before {
    ANIMATION (respects reduced motion)
    ============================================================ */
 
+/* ============================================================
+   SKELETON SHIMMER
+   ============================================================ */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--color-muted-light) 25%, var(--color-paper-light) 50%, var(--color-muted-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

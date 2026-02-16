@@ -52,7 +52,12 @@ export default async function SessionPage({ params }: SessionPageProps) {
   return (
     <div className="min-h-screen bg-paper">
       <Navbar />
-      <ChatContainer sessionId={id} initialMessages={session.messages as any[] ?? []} />
+      <ChatContainer
+        sessionId={id}
+        initialMessages={session.messages as any[] ?? []}
+        initialMood={(session as any).initial_mood ?? null}
+        sessionStatus={(session as any).status ?? "active"}
+      />
     </div>
   );
 }

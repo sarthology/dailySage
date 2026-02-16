@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "./SignOutButton";
+import { MobileNav } from "./MobileNav";
 
 export async function Navbar() {
   const supabase = await createClient();
@@ -11,12 +12,15 @@ export async function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-muted-light bg-paper/95 backdrop-blur-sm">
       <nav className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-4 md:px-8">
-        <Link
-          href={user ? "/dashboard" : "/"}
-          className="font-display text-xl font-extrabold tracking-wide text-ink"
-        >
-          Philosopher Coach
-        </Link>
+        <div className="flex items-center gap-3">
+          <MobileNav isAuthenticated={!!user} />
+          <Link
+            href={user ? "/dashboard" : "/"}
+            className="font-display text-xl font-extrabold tracking-wide text-ink"
+          >
+            Philosopher Coach
+          </Link>
+        </div>
         <div className="flex items-center gap-6">
           <Link
             href="/explore"

@@ -4,7 +4,7 @@ import { philosophicalProfileSchema } from "@/lib/llm/schemas";
 import { onboardingAnalysisPrompt } from "@/lib/llm/prompts";
 
 export async function POST(req: Request) {
-  const { moodVector, concern, copingStyle, selectedQuotes } = await req.json();
+  const { moodVector, concern, copingStyle, selectedQuotes, familiarityLevel } = await req.json();
 
   const { object } = await generateObject({
     model: getModel(),
@@ -14,8 +14,10 @@ export async function POST(req: Request) {
       concern,
       copingStyle,
       selectedQuotes,
+      familiarityLevel,
     }),
   });
 
-  return Response.json(object);
+  // Include familiarity level in the response
+  return Response.json({ ...object, familiarityLevel: familiarityLevel || "beginner" });
 }

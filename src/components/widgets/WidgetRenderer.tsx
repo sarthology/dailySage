@@ -10,6 +10,12 @@ import { GratitudeList } from "./GratitudeList";
 import { StoicMeditation } from "./StoicMeditation";
 import { ThoughtExperiment } from "./ThoughtExperiment";
 import { ProgressVisualization } from "./ProgressVisualization";
+import { ObstacleReframe } from "./ObstacleReframe";
+import { ValuesWheel } from "./ValuesWheel";
+import { CognitiveDistortion } from "./CognitiveDistortion";
+import { QuoteChallenge } from "./QuoteChallenge";
+import { WeeklyReview } from "./WeeklyReview";
+import { ArgumentMapper } from "./ArgumentMapper";
 
 interface WidgetRendererProps {
   config: WidgetConfig;
@@ -42,6 +48,18 @@ export function WidgetRenderer({ config }: WidgetRendererProps) {
       return <ThoughtExperiment {...props} content={config.content as ThoughtExperimentContent} />;
     case "progress_visualization":
       return <ProgressVisualization {...props} content={config.content as ProgressVisualizationContent} />;
+    case "obstacle_reframe":
+      return <ObstacleReframe title={config.title} {...(config.content as unknown as ObstacleReframeContent)} />;
+    case "values_wheel":
+      return <ValuesWheel title={config.title} {...(config.content as unknown as ValuesWheelContent)} />;
+    case "cognitive_distortion":
+      return <CognitiveDistortion title={config.title} {...(config.content as unknown as CognitiveDistortionContent)} />;
+    case "quote_challenge":
+      return <QuoteChallenge {...(config.content as unknown as QuoteChallengeContent)} />;
+    case "weekly_review":
+      return <WeeklyReview title={config.title} {...(config.content as unknown as WeeklyReviewContent)} />;
+    case "argument_mapper":
+      return <ArgumentMapper title={config.title} {...(config.content as unknown as ArgumentMapperContent)} />;
     default: {
       const _exhaustive: never = config.type;
       return (
@@ -117,4 +135,44 @@ interface ProgressVisualizationContent {
   stats?: { label: string; value: string | number; detail?: string }[];
   schools?: { name: string; progress: number; sessions: number }[];
   milestones?: { label: string; achieved: boolean; date?: string }[];
+}
+
+interface ObstacleReframeContent {
+  obstacle: string;
+  withinControl: string[];
+  outsideControl: string[];
+  actionPlan: string;
+  stoicQuote?: string;
+}
+
+interface ValuesWheelContent {
+  domains: { name: string; question: string }[];
+  reflectionPrompt: string;
+}
+
+interface CognitiveDistortionContent {
+  userThought: string;
+  distortionType: string;
+  explanation: string;
+  philosophicalCounter: string;
+  reframedPerspective: string;
+}
+
+interface QuoteChallengeContent {
+  quote: string;
+  options: { name: string; school: string }[];
+  correctIndex: number;
+  explanation: string;
+}
+
+interface WeeklyReviewContent {
+  prompts: { question: string; placeholder: string }[];
+  closingReflection: string;
+}
+
+interface ArgumentMapperContent {
+  originalStatement: string;
+  premises: { text: string; challengeQuestion: string }[];
+  conclusion: string;
+  philosophicalAnalysis: string;
 }

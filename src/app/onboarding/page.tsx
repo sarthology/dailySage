@@ -45,7 +45,13 @@ const sampleQuotes = [
   },
 ];
 
-type Step = "welcome" | "mood" | "concern" | "coping" | "quotes" | "result";
+type Step = "welcome" | "mood" | "concern" | "coping" | "quotes" | "familiarity" | "result";
+
+const familiarityOptions = [
+  { value: "beginner", label: "Never heard of it", description: "That's totally fine — we'll explain everything as we go." },
+  { value: "intermediate", label: "I've heard of it", description: "You know the basics. We'll build on that." },
+  { value: "advanced", label: "I've studied it", description: "Great — we can go deeper together." },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -54,8 +60,14 @@ export default function OnboardingPage() {
   const [concern, setConcern] = useState("");
   const [coping, setCoping] = useState("");
   const [selectedQuotes, setSelectedQuotes] = useState<number[]>([]);
+  const [familiarity, setFamiliarity] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Derive the matched school from selected quotes
+  const matchedSchool = selectedQuotes.length > 0
+    ? sampleQuotes[selectedQuotes[0]].school
+    : "Stoicism";
 
   function toggleQuote(index: number) {
     setSelectedQuotes((prev) =>
@@ -86,6 +98,7 @@ export default function OnboardingPage() {
           concern,
           copingStyle: coping,
           selectedQuotes: quoteTexts,
+          familiarityLevel: familiarity || "beginner",
         }),
       });
 
@@ -158,7 +171,7 @@ export default function OnboardingPage() {
         {step === "mood" && (
           <div>
             <p className="text-caption mb-2 uppercase tracking-[0.2em] text-muted text-center">
-              Step 1 of 4
+              Step 1 of 5
             </p>
             <h2 className="text-h2 mb-2 text-center text-ink">
               How Are You Feeling?
@@ -182,7 +195,7 @@ export default function OnboardingPage() {
         {step === "concern" && (
           <div>
             <p className="text-caption mb-2 uppercase tracking-[0.2em] text-muted text-center">
-              Step 2 of 4
+              Step 2 of 5
             </p>
             <h2 className="text-h2 mb-2 text-center text-ink">
               What&apos;s on Your Mind?
@@ -228,7 +241,7 @@ export default function OnboardingPage() {
         {step === "coping" && (
           <div>
             <p className="text-caption mb-2 uppercase tracking-[0.2em] text-muted text-center">
-              Step 3 of 4
+              Step 3 of 5
             </p>
             <h2 className="text-h2 mb-2 text-center text-ink">
               How Do You Usually Cope?
@@ -274,7 +287,7 @@ export default function OnboardingPage() {
         {step === "quotes" && (
           <div>
             <p className="text-caption mb-2 uppercase tracking-[0.2em] text-muted text-center">
-              Step 4 of 4
+              Step 4 of 5
             </p>
             <h2 className="text-h2 mb-2 text-center text-ink">
               What Resonates?
@@ -314,8 +327,62 @@ export default function OnboardingPage() {
                 Back
               </Button>
               <Button
+                onClick={() => setStep("familiarity")}
+                disabled={selectedQuotes.length === 0}
+                className="rounded-md bg-accent px-8 py-2.5 text-sm font-semibold uppercase tracking-[0.05em] text-paper-light hover:bg-accent-hover disabled:opacity-50"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Familiarity */}
+        {step === "familiarity" && (
+          <div>
+            <p className="text-caption mb-2 uppercase tracking-[0.2em] text-muted text-center">
+              Step 5 of 5
+            </p>
+            <h2 className="text-h2 mb-2 text-center text-ink">
+              {matchedSchool} Resonates With You
+            </h2>
+            <p className="text-body-sm mb-8 text-center text-muted">
+              How familiar are you with {matchedSchool}?
+            </p>
+            <div className="grid grid-cols-1 gap-3">
+              {familiarityOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setFamiliarity(opt.value)}
+                  className={`rounded-lg border-2 p-4 text-left transition-all duration-150 ${
+                    familiarity === opt.value
+                      ? "border-accent bg-paper-light"
+                      : "border-muted-light bg-paper hover:border-ink"
+                  }`}
+                >
+                  <p className="text-body-sm font-medium text-ink">
+                    {opt.label}
+                  </p>
+                  <p className="text-caption mt-1 text-muted">
+                    {opt.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+            {error && (
+              <p className="mt-4 text-body-sm text-accent text-center">{error}</p>
+            )}
+            <div className="mt-8 flex justify-center gap-4">
+              <Button
+                onClick={() => setStep("quotes")}
+                variant="outline"
+                className="rounded-md border-2 border-ink px-6 py-2.5 text-sm font-semibold text-ink"
+              >
+                Back
+              </Button>
+              <Button
                 onClick={handleComplete}
-                disabled={selectedQuotes.length === 0 || loading}
+                disabled={!familiarity || loading}
                 className="rounded-md bg-accent px-8 py-2.5 text-sm font-semibold uppercase tracking-[0.05em] text-paper-light hover:bg-accent-hover disabled:opacity-50"
               >
                 {loading ? "Analyzing..." : "Complete"}
