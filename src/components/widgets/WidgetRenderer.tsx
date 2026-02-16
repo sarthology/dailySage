@@ -16,6 +16,8 @@ import { CognitiveDistortion } from "./CognitiveDistortion";
 import { QuoteChallenge } from "./QuoteChallenge";
 import { WeeklyReview } from "./WeeklyReview";
 import { ArgumentMapper } from "./ArgumentMapper";
+import { FeelingPicker } from "./FeelingPicker";
+import { QuickPrompt } from "./QuickPrompt";
 
 interface WidgetRendererProps {
   config: WidgetConfig;
@@ -60,6 +62,10 @@ export function WidgetRenderer({ config }: WidgetRendererProps) {
       return <WeeklyReview title={config.title} {...(config.content as unknown as WeeklyReviewContent)} />;
     case "argument_mapper":
       return <ArgumentMapper title={config.title} {...(config.content as unknown as ArgumentMapperContent)} />;
+    case "feeling_picker":
+      return <FeelingPicker feelings={(config.content as any).feelings} />;
+    case "quick_prompt":
+      return <QuickPrompt title={config.title} prompts={(config.content as any).prompts} />;
     default: {
       const _exhaustive: never = config.type;
       return (

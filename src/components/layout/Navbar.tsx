@@ -18,22 +18,10 @@ export async function Navbar() {
             href={user ? "/dashboard" : "/"}
             className="font-display text-xl font-extrabold tracking-wide text-ink"
           >
-            Philosopher Coach
+            Daily Sage
           </Link>
         </div>
         <div className="flex items-center gap-6">
-          <Link
-            href="/explore"
-            className="hidden text-sm font-medium text-muted transition-colors duration-150 hover:text-ink md:block"
-          >
-            Explore
-          </Link>
-          <Link
-            href="/paths"
-            className="hidden text-sm font-medium text-muted transition-colors duration-150 hover:text-ink md:block"
-          >
-            Journey
-          </Link>
           {user ? (
             <>
               <Link
@@ -43,10 +31,22 @@ export async function Navbar() {
                 Dashboard
               </Link>
               <Link
-                href="/session/new"
-                className="rounded-md bg-accent px-5 py-2 text-sm font-semibold uppercase tracking-[0.05em] text-paper-light transition-colors duration-150 hover:bg-accent-hover"
+                href="/journal"
+                className="hidden text-sm font-medium text-muted transition-colors duration-150 hover:text-ink md:block"
               >
-                New Session
+                Journal
+              </Link>
+              <Link
+                href="/explore"
+                className="hidden text-sm font-medium text-muted transition-colors duration-150 hover:text-ink md:block"
+              >
+                Widgets
+              </Link>
+              <Link
+                href="/profile"
+                className="hidden text-sm font-medium text-muted transition-colors duration-150 hover:text-ink md:block"
+              >
+                Profile
               </Link>
               <SignOutButton />
             </>

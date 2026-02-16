@@ -1,18 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
+import { tapScale } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
+import { WidgetHistory } from "./WidgetHistory";
 
 interface WeeklyReviewProps {
   title: string;
   prompts: { question: string; placeholder: string }[];
   closingReflection: string;
+  onSave?: (data: Record<string, unknown>) => Promise<boolean>;
+  onSendToChat?: (prompt: string) => void;
+  widgetInstanceId?: string;
 }
 
 export function WeeklyReview({
   title,
   prompts,
   closingReflection,
+  onSave,
+  onSendToChat,
+  widgetInstanceId,
 }: WeeklyReviewProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [responses, setResponses] = useState<string[]>(
@@ -20,6 +29,8 @@ export function WeeklyReview({
   );
   const [completed, setCompleted] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   function updateResponse(value: string) {
     setResponses((prev) => {
@@ -34,6 +45,22 @@ export function WeeklyReview({
       setCurrentStep((s) => s + 1);
     } else {
       setCompleted(true);
+    }
+  }
+
+  async function handleSave() {
+    // Combine all prompts + responses into a single journal entry
+    const text = prompts
+      .map((p, i) => `**${p.question}**\n${responses[i]}`)
+      .join("\n\n");
+
+    if (onSave) {
+      setSaving(true);
+      const success = await onSave({ text, prompt: title });
+      setSaving(false);
+      if (success) setSaved(true);
+    } else {
+      setSaved(true);
     }
   }
 
@@ -110,14 +137,41 @@ export function WeeklyReview({
             {closingReflection}
           </p>
 
-          <Button
-            onClick={() => setSaved(true)}
-            disabled={saved}
-            className="mt-4 rounded-md bg-sage px-6 py-2 text-sm font-semibold uppercase tracking-[0.05em] text-paper-light hover:bg-sage/90 disabled:opacity-50"
-          >
-            {saved ? "Saved to Journal" : "Save to Journal"}
-          </Button>
+          <div className="mt-4 flex items-center gap-2">
+            <Button
+              onClick={handleSave}
+              disabled={saved || saving}
+              className="rounded-md bg-sage px-6 py-2 text-sm font-semibold uppercase tracking-[0.05em] text-paper-light hover:bg-sage/90 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : saved ? "Saved to Journal" : "Save to Journal"}
+            </Button>
+            {onSendToChat && saved && (
+              <motion.button
+                whileTap={tapScale}
+                onClick={() => {
+                  const summary = prompts.map((p, i) => `${p.question}: ${responses[i]}`).join(". ");
+                  onSendToChat(`I just completed my weekly review. Here's a summary: ${summary.slice(0, 300)}${summary.length > 300 ? "..." : ""}. I'd like to discuss my progress.`);
+                }}
+                className="rounded-md border border-slate/30 bg-slate/5 px-4 py-2 text-sm font-medium text-slate hover:bg-slate/10 transition-colors"
+              >
+                Discuss with Coach
+              </motion.button>
+            )}
+            <div className="flex-1" />
+            {widgetInstanceId && (
+              <button
+                onClick={() => setShowHistory((v) => !v)}
+                className="font-mono text-xs text-muted hover:text-ink transition-colors"
+              >
+                {showHistory ? "Hide history" : "History"}
+              </button>
+            )}
+          </div>
         </>
+      )}
+
+      {showHistory && widgetInstanceId && (
+        <WidgetHistory dataSubtype="journal" widgetInstanceId={widgetInstanceId} />
       )}
     </div>
   );

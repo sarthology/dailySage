@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
-import { DashboardContent } from "@/components/core/DashboardContent";
+import { DashboardShell } from "@/components/layout/DashboardShell";
+import { DashboardWidgetGrid } from "@/components/core/DashboardWidgetGrid";
 import { createClient } from "@/lib/supabase/server";
-import { aggregateSchoolProgress } from "@/lib/philosophy/path-tracking";
-import type { Profile, SessionRow, MoodLogRow, PhilosophicalPathRow } from "@/lib/supabase/types";
+import type { Profile, SessionRow } from "@/lib/supabase/types";
+import type { DashboardLayout } from "@/types/dashboard";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -14,7 +16,9 @@ function getGreeting(): string {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/auth");
@@ -29,71 +33,49 @@ export default async function DashboardPage() {
 
   const profile = profileData as Profile | null;
 
-  // Redirect to onboarding if not complete
   if (!profile?.onboarding_complete) {
     redirect("/onboarding");
   }
 
-  // Fetch recent sessions
-  const { data: sessionsData } = await supabase
+  // Find or create an active session for the chat panel
+  const { data: activeSessionData } = await supabase
     .from("sessions")
     .select("*")
     .eq("user_id", user.id)
+    .eq("status", "active")
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(1)
+    .single();
 
-  const recentSessions = (sessionsData || []) as SessionRow[];
+  let activeSession = activeSessionData as SessionRow | null;
 
-  // Fetch recent moods for streak calculation + timeline
-  const { data: moodsData } = await supabase
-    .from("mood_logs")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(90);
-
-  const recentMoods = (moodsData || []) as MoodLogRow[];
-
-  // Calculate streak
-  let streak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const uniqueDays = new Set(
-    recentMoods.map((m) => {
-      const d = new Date(m.created_at);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    })
-  );
-
-  for (let i = 0; i < 90; i++) {
-    const checkDate = new Date(today);
-    checkDate.setDate(checkDate.getDate() - i);
-    checkDate.setHours(0, 0, 0, 0);
-
-    if (uniqueDays.has(checkDate.getTime())) {
-      streak++;
-    } else {
-      if (i === 0) continue;
-      break;
-    }
+  if (!activeSession) {
+    const { data: newSession } = await supabase
+      .from("sessions")
+      .insert({
+        user_id: user.id,
+        status: "active",
+        messages: [],
+        widgets_generated: [],
+        philosophers_referenced: [],
+        token_count: 0,
+      })
+      .select()
+      .single();
+    activeSession = newSession as SessionRow;
   }
-  streak = Math.max(streak, 1);
 
-  // Fetch philosophical paths for progress
-  const { data: pathsData } = await supabase
-    .from("philosophical_paths")
-    .select("*")
-    .eq("user_id", user.id);
-
-  const paths = (pathsData || []) as PhilosophicalPathRow[];
-  const schoolProgress = aggregateSchoolProgress(paths).slice(0, 3);
-
-  // Pick a quote based on philosophical profile
+  // Extract profile data
   const philosophicalProfile = profile.philosophical_profile as {
-    welcomeQuote?: { text: string; source?: string; philosopher: string };
+    familiarityLevel?: string;
+    stoicConcepts?: string[];
   } | null;
+
+  const dashboardLayout: DashboardLayout = (profile.dashboard_layout as DashboardLayout) || {
+    widgets: [],
+    lastModifiedBy: "llm",
+    lastModifiedAt: new Date().toISOString(),
+  };
 
   const greeting = getGreeting();
   const displayName = profile.display_name || "seeker";
@@ -101,22 +83,43 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-paper">
       <Navbar />
-      <main className="mx-auto max-w-[1200px] px-4 py-8 md:px-8 md:py-12">
-        <div className="mb-8">
-          <p className="text-caption mb-1 uppercase tracking-[0.2em] text-muted">
-            Dashboard
-          </p>
-          <h1 className="text-h1 text-ink">{greeting}, {displayName}.</h1>
+      <DashboardShell
+        profileId={profile.id}
+        initialLayout={dashboardLayout}
+        sessionId={activeSession.id}
+        initialMessages={(activeSession.messages || []) as Array<{
+          role: "user" | "assistant";
+          content: string;
+          parts?: unknown[];
+          timestamp: string;
+        }>}
+        familiarityLevel={
+          (philosophicalProfile?.familiarityLevel as "beginner" | "intermediate" | "advanced") ||
+          "beginner"
+        }
+        stoicConcepts={philosophicalProfile?.stoicConcepts}
+      >
+        {/* Dashboard header + widget grid */}
+        <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <p className="text-caption mb-1 uppercase tracking-[0.2em] text-muted">
+                Dashboard
+              </p>
+              <h1 className="text-h1 text-ink">
+                {greeting}, {displayName}.
+              </h1>
+            </div>
+            <Link
+              href="/onboarding?recreate=true"
+              className="shrink-0 rounded-md border border-muted-light px-4 py-2 font-mono text-[0.65rem] uppercase tracking-wider text-muted transition-colors hover:border-ink hover:text-ink"
+            >
+              Recreate Dashboard
+            </Link>
+          </div>
+          <DashboardWidgetGrid />
         </div>
-
-        <DashboardContent
-          streak={streak}
-          recentSessions={recentSessions}
-          recentMoods={recentMoods}
-          schoolProgress={schoolProgress}
-          welcomeQuote={philosophicalProfile?.welcomeQuote}
-        />
-      </main>
+      </DashboardShell>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { collapseReveal, fadeUp, tapScale } from "@/lib/motion";
+import { WidgetActionBar } from "./WidgetActionBar";
 
 interface ObstacleReframeProps {
   title: string;
@@ -9,6 +12,8 @@ interface ObstacleReframeProps {
   outsideControl: string[];
   actionPlan: string;
   stoicQuote?: string;
+  onSave?: (data: Record<string, unknown>) => Promise<boolean>;
+  onSendToChat?: (prompt: string) => void;
 }
 
 export function ObstacleReframe({
@@ -18,8 +23,12 @@ export function ObstacleReframe({
   outsideControl,
   actionPlan,
   stoicQuote,
+  onSave,
+  onSendToChat,
 }: ObstacleReframeProps) {
   const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function toggle(index: number) {
     setChecked((prev) => {
@@ -28,6 +37,26 @@ export function ObstacleReframe({
       else next.add(index);
       return next;
     });
+  }
+
+  async function handleSave() {
+    if (onSave) {
+      setSaving(true);
+      const success = await onSave({
+        originalThought: obstacle,
+        reframedThought: actionPlan,
+        technique: "dichotomy_of_control",
+      });
+      setSaving(false);
+      if (success) setSaved(true);
+    }
+  }
+
+  function handleSendToChat() {
+    if (onSendToChat) {
+      const prompt = `I've been working through an obstacle reframe. The obstacle is: "${obstacle}". I identified what's within my control and created an action plan. I'd like to discuss how to move forward.`;
+      onSendToChat(prompt);
+    }
   }
 
   return (
@@ -49,8 +78,9 @@ export function ObstacleReframe({
           </h4>
           <div className="space-y-2">
             {withinControl.map((item, i) => (
-              <label
+              <motion.label
                 key={i}
+                whileTap={tapScale}
                 className="flex cursor-pointer items-start gap-2 rounded-md border-l-2 border-sage p-3 bg-sage/5 transition-colors hover:bg-sage/10"
               >
                 <input
@@ -60,7 +90,7 @@ export function ObstacleReframe({
                   className="mt-0.5 accent-sage"
                 />
                 <span className="text-body-sm text-ink">{item}</span>
-              </label>
+              </motion.label>
             ))}
           </div>
         </div>
@@ -83,12 +113,31 @@ export function ObstacleReframe({
         </div>
       </div>
 
-      {checked.size > 0 && (
-        <div className="mt-6 rounded-md border border-sage/30 bg-sage/5 p-4">
-          <p className="text-label text-sage mb-1">Your Action Plan</p>
-          <p className="text-body-sm text-ink">{actionPlan}</p>
-        </div>
-      )}
+      <AnimatePresence>
+        {checked.size > 0 && (
+          <motion.div
+            variants={collapseReveal}
+            initial="collapsed"
+            animate="expanded"
+            exit="collapsed"
+          >
+            <div className="mt-6 rounded-md border border-sage/30 bg-sage/5 p-4">
+              <p className="text-label text-sage mb-1">Your Action Plan</p>
+              <p className="text-body-sm text-ink">{actionPlan}</p>
+            </div>
+
+            {(onSave || onSendToChat) && (
+              <WidgetActionBar
+                onSave={onSave ? handleSave : undefined}
+                saveLabel="Save Reframe"
+                saving={saving}
+                saved={saved}
+                onSendToChat={onSendToChat ? handleSendToChat : undefined}
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {stoicQuote && (
         <div className="mt-6 border-t border-muted-light pt-4">

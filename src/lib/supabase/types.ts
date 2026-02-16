@@ -1,6 +1,8 @@
 // Generated types will go here once Supabase CLI is connected.
 // For now, define the expected row types manually.
 
+import type { DashboardLayout } from "@/types/dashboard";
+
 export interface Profile {
   id: string;
   display_name: string | null;
@@ -8,6 +10,7 @@ export interface Profile {
   onboarding_complete: boolean;
   philosophical_profile: Record<string, unknown>;
   preferences: { theme: string; notifications: boolean };
+  dashboard_layout: DashboardLayout | null;
   credits_remaining: number;
   created_at: string;
   updated_at: string;
@@ -38,6 +41,7 @@ export interface JournalEntry {
   mood_after: Record<string, unknown> | null;
   philosophical_tags: string[];
   ai_reflection: string | null;
+  tags: string[];
   created_at: string;
 }
 
@@ -49,6 +53,18 @@ export interface MoodLogRow {
   mood_label: string | null;
   intensity: number;
   context: string | null;
+  tags: string[];
+  created_at: string;
+}
+
+export interface WidgetDataRow {
+  id: string;
+  user_id: string;
+  session_id: string | null;
+  widget_instance_id: string | null;
+  data_subtype: "gratitude" | "assessment" | "reframe";
+  content: Record<string, unknown>;
+  tags: string[];
   created_at: string;
 }
 

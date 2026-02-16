@@ -3,15 +3,30 @@
 import { useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { ChatModeBar } from "./ChatModeBar";
+import { MODE_PLACEHOLDERS, type ChatMode } from "@/types/chat";
 
 interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   isLoading: boolean;
+  mode?: ChatMode;
+  onModeChange?: (mode: ChatMode) => void;
+  credits?: number | null;
+  creditsLoading?: boolean;
 }
 
-export function ChatInput({ value, onChange, onSubmit, isLoading }: ChatInputProps) {
+export function ChatInput({
+  value,
+  onChange,
+  onSubmit,
+  isLoading,
+  mode = "dialogue",
+  onModeChange,
+  credits,
+  creditsLoading,
+}: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -25,23 +40,33 @@ export function ChatInput({ value, onChange, onSubmit, isLoading }: ChatInputPro
 
   return (
     <div className="border-t border-muted-light bg-paper-light p-4">
-      <div className="mx-auto flex max-w-3xl gap-3">
-        <Textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="What's on your mind?"
-          rows={1}
-          className="min-h-[44px] max-h-32 resize-none border-muted-light bg-paper text-ink placeholder:text-muted focus:border-accent"
-        />
-        <Button
-          onClick={onSubmit}
-          disabled={!value.trim() || isLoading}
-          className="shrink-0 rounded-md bg-accent px-5 text-sm font-semibold uppercase tracking-[0.05em] text-paper-light hover:bg-accent-hover disabled:opacity-50"
-        >
-          {isLoading ? "..." : "Send"}
-        </Button>
+      <div className="mx-auto max-w-3xl">
+        {onModeChange && (
+          <ChatModeBar
+            mode={mode}
+            onModeChange={onModeChange}
+            credits={credits ?? null}
+            creditsLoading={creditsLoading ?? false}
+          />
+        )}
+        <div className="flex gap-3">
+          <Textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={MODE_PLACEHOLDERS[mode]}
+            rows={1}
+            className="min-h-[44px] max-h-32 resize-none border-muted-light bg-paper text-ink placeholder:text-muted focus:border-accent"
+          />
+          <Button
+            onClick={onSubmit}
+            disabled={!value.trim() || isLoading}
+            className="shrink-0 rounded-md bg-accent px-5 text-sm font-semibold uppercase tracking-[0.05em] text-paper-light hover:bg-accent-hover disabled:opacity-50"
+          >
+            {isLoading ? "..." : "Send"}
+          </Button>
+        </div>
       </div>
     </div>
   );

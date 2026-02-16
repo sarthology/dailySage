@@ -1,11 +1,4 @@
-export type PhilosophicalSchool =
-  | "stoicism"
-  | "existentialism"
-  | "buddhism"
-  | "absurdism"
-  | "taoism"
-  | "epicureanism"
-  | "pragmatism";
+export type PhilosophicalSchool = "stoicism";
 
 export interface SchoolDefinition {
   name: string;
@@ -34,8 +27,9 @@ export interface PhilosopherQuote {
 
 export interface PhilosophicalProfile {
   primarySchool: PhilosophicalSchool;
-  secondarySchool?: PhilosophicalSchool;
   description: string;
+  stoicConcepts: string[];
   recommendedExercises: string[];
   welcomeQuote: PhilosopherQuote;
+  familiarityLevel: "beginner" | "intermediate" | "advanced";
 }

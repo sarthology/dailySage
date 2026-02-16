@@ -14,29 +14,120 @@ import { CognitiveDistortion } from "@/components/widgets/CognitiveDistortion";
 import { QuoteChallenge } from "@/components/widgets/QuoteChallenge";
 import { WeeklyReview } from "@/components/widgets/WeeklyReview";
 import { ArgumentMapper } from "@/components/widgets/ArgumentMapper";
+import { FeelingPicker } from "@/components/widgets/FeelingPicker";
+import { QuickPrompt } from "@/components/widgets/QuickPrompt";
+
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { scaleIn, editorial, tapScale } from "@/lib/motion";
 
 interface WidgetInChatProps {
   toolName: string;
   args: Record<string, unknown>;
   state: string;
+  onPin?: () => void;
+  onSave?: (data: Record<string, unknown>) => Promise<boolean>;
+  onSendToChat?: (prompt: string) => void;
+  widgetInstanceId?: string;
 }
 
-export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
-  // Show loading skeleton while tool args are still streaming
-  // AI SDK v6 uses "input-streaming" state (not "partial-call")
-  if (state === "input-streaming") {
-    return (
-      <div className="rounded-lg border border-muted-light bg-paper-light p-6 my-4 animate-pulse">
-        <div className="h-3 bg-muted-light rounded w-24 mb-3" />
-        <div className="h-5 bg-muted-light rounded w-48 mb-2" />
-        <div className="h-3 bg-muted-light rounded w-full mb-1" />
-        <div className="h-3 bg-muted-light rounded w-3/4" />
-      </div>
-    );
-  }
+export function WidgetInChat({
+  toolName,
+  args,
+  state,
+  onPin,
+  onSave,
+  onSendToChat,
+  widgetInstanceId,
+}: WidgetInChatProps) {
+  const [pinned, setPinned] = useState(false);
 
   const a = args as any;
+  const callbacks = { onSave, onSendToChat, widgetInstanceId };
+  const widget = renderWidget(toolName, a, callbacks);
 
+  return (
+    <AnimatePresence mode="wait">
+      {state === "input-streaming" ? (
+        <motion.div
+          key="skeleton"
+          className="rounded-lg border border-muted-light bg-paper-light p-6 my-4 animate-pulse"
+          exit={{ opacity: 0 }}
+          transition={editorial.fast}
+        >
+          <div className="h-3 bg-muted-light rounded w-24 mb-3" />
+          <div className="h-5 bg-muted-light rounded w-48 mb-2" />
+          <div className="h-3 bg-muted-light rounded w-full mb-1" />
+          <div className="h-3 bg-muted-light rounded w-3/4" />
+        </motion.div>
+      ) : !widget ? (
+        <motion.div
+          key="fallback"
+          variants={scaleIn}
+          initial="hidden"
+          animate="visible"
+          className="rounded-lg border border-muted-light bg-paper-light p-6 my-4"
+        >
+          <span className="font-mono text-xs font-medium text-muted uppercase tracking-wider">
+            Widget
+          </span>
+          <p className="text-body-sm mt-2 text-muted">
+            Interactive widget: {toolName}
+          </p>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="widget"
+          variants={scaleIn}
+          initial="hidden"
+          animate="visible"
+          className="my-4"
+        >
+          {widget}
+          <AnimatePresence mode="wait">
+            {onPin && !pinned ? (
+              <motion.button
+                key="pin-btn"
+                onClick={() => {
+                  onPin();
+                  setPinned(true);
+                }}
+                className="mt-2 rounded-md border border-muted-light px-3 py-1.5 font-mono text-xs text-muted hover:text-ink hover:border-ink transition-colors"
+                whileTap={tapScale}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={editorial.fast}
+              >
+                Pin to Dashboard
+              </motion.button>
+            ) : pinned ? (
+              <motion.span
+                key="pin-badge"
+                variants={scaleIn}
+                initial="hidden"
+                animate="visible"
+                className="mt-2 inline-block rounded-md bg-sage/10 px-3 py-1.5 font-mono text-xs text-sage"
+              >
+                Pinned to dashboard
+              </motion.span>
+            ) : null}
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+interface WidgetCallbacks {
+  onSave?: (data: Record<string, unknown>) => Promise<boolean>;
+  onSendToChat?: (prompt: string) => void;
+  widgetInstanceId?: string;
+}
+
+function renderWidget(
+  toolName: string,
+  a: Record<string, any>,
+  cb: WidgetCallbacks
+): React.ReactNode | null {
   switch (toolName) {
     case "show_breathing_exercise":
       return (
@@ -61,6 +152,9 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
             prompt: a.prompt,
             guiding_questions: a.guidingQuestions,
           }}
+          onSave={cb.onSave}
+          onSendToChat={cb.onSendToChat}
+          widgetInstanceId={cb.widgetInstanceId}
         />
       );
 
@@ -75,6 +169,8 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
             steps: a.steps,
             reframe: a.reframedThought,
           }}
+          onSave={cb.onSave}
+          onSendToChat={cb.onSendToChat}
         />
       );
 
@@ -130,6 +226,9 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
             max_items: a.maxItems,
             reflection: a.reflectionOnComplete,
           }}
+          onSave={cb.onSave}
+          onSendToChat={cb.onSendToChat}
+          widgetInstanceId={cb.widgetInstanceId}
         />
       );
 
@@ -147,7 +246,6 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
         />
       );
 
-    // New widgets — flat props matching tool schemas directly
     case "show_obstacle_reframe":
       return (
         <ObstacleReframe
@@ -157,6 +255,8 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
           outsideControl={a.outsideControl}
           actionPlan={a.actionPlan}
           stoicQuote={a.stoicQuote}
+          onSave={cb.onSave}
+          onSendToChat={cb.onSendToChat}
         />
       );
 
@@ -166,6 +266,9 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
           title={a.title}
           domains={a.domains}
           reflectionPrompt={a.reflectionPrompt}
+          onSave={cb.onSave}
+          onSendToChat={cb.onSendToChat}
+          widgetInstanceId={cb.widgetInstanceId}
         />
       );
 
@@ -178,6 +281,8 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
           explanation={a.explanation}
           philosophicalCounter={a.philosophicalCounter}
           reframedPerspective={a.reframedPerspective}
+          onSave={cb.onSave}
+          onSendToChat={cb.onSendToChat}
         />
       );
 
@@ -197,6 +302,9 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
           title={a.title}
           prompts={a.prompts}
           closingReflection={a.closingReflection}
+          onSave={cb.onSave}
+          onSendToChat={cb.onSendToChat}
+          widgetInstanceId={cb.widgetInstanceId}
         />
       );
 
@@ -211,16 +319,25 @@ export function WidgetInChat({ toolName, args, state }: WidgetInChatProps) {
         />
       );
 
-    default:
+    case "show_feeling_picker":
       return (
-        <div className="rounded-lg border border-muted-light bg-paper-light p-6 my-4">
-          <span className="font-mono text-xs font-medium text-muted uppercase tracking-wider">
-            Widget
-          </span>
-          <p className="text-body-sm mt-2 text-muted">
-            Interactive widget: {toolName}
-          </p>
-        </div>
+        <FeelingPicker
+          feelings={a.feelings}
+          onSave={cb.onSave}
+          onSendToChat={cb.onSendToChat}
+        />
       );
+
+    case "show_quick_prompt":
+      return (
+        <QuickPrompt
+          title={a.title}
+          prompts={a.prompts}
+          onSendToChat={cb.onSendToChat}
+        />
+      );
+
+    default:
+      return null;
   }
 }

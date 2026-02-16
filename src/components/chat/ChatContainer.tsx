@@ -9,6 +9,9 @@ import { WidgetInChat } from "./WidgetInChat";
 import { SessionSummary } from "@/components/core/SessionSummary";
 import { useSession } from "@/hooks/useSession";
 import { useCredits } from "@/hooks/useCredits";
+import { WIDGET_REGISTRY } from "@/lib/widget-registry";
+import { useWidgetData } from "@/hooks/useWidgetData";
+import type { ChatMode } from "@/types/chat";
 
 interface StoredMessage {
   role: "user" | "assistant";
@@ -29,8 +32,10 @@ export function ChatContainer({ sessionId, initialMessages = [], initialMood, se
   const [input, setInput] = useState("");
   const [creditError, setCreditError] = useState(false);
   const [showEndSession, setShowEndSession] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>("dialogue");
   const { updateSessionMessages } = useSession();
-  const { canAfford, deductCredit } = useCredits();
+  const { credits, loading: creditsLoading, canAfford, deductCredit } = useCredits();
+  const { saveWidgetData } = useWidgetData();
 
   // Helper to extract text content from message (handles both parts and content formats)
   const getMessageContent = (message: any): string => {
@@ -71,11 +76,14 @@ export function ChatContainer({ sessionId, initialMessages = [], initialMood, se
     []
   );
 
+  const modeRef = useRef<ChatMode>("dialogue");
+  modeRef.current = chatMode;
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: { context: { sessionId } },
+        body: () => ({ context: { sessionId, mode: modeRef.current } }),
       }),
     [sessionId]
   );
@@ -83,6 +91,11 @@ export function ChatContainer({ sessionId, initialMessages = [], initialMood, se
   const { messages, sendMessage, status } = useChat({
     transport,
     messages: hydratedMessages,
+    onError: (error) => {
+      // Suppress abort errors — expected when navigating away or sending a new message mid-stream
+      if (error.name === "AbortError") return;
+      console.error("Chat error:", error);
+    },
   });
 
   const isLoading = status === "streaming" || status === "submitted";
@@ -191,21 +204,33 @@ export function ChatContainer({ sessionId, initialMessages = [], initialMood, se
                     role={message.role as "user" | "assistant"}
                     content={getMessageContent(message)}
                   />
-                  {toolParts.map((part: any) => (
-                    <WidgetInChat
-                      key={part.toolCallId}
-                      toolName={part.type.replace("tool-", "")}
-                      args={part.input || {}}
-                      state={part.state || "input-available"}
-                    />
-                  ))}
+                  {toolParts.map((part: any) => {
+                    const toolName = part.type.replace("tool-", "") as string;
+                    const widgetType = toolName.replace("show_", "") as import("@/types/widget").WidgetType;
+                    const config = WIDGET_REGISTRY[widgetType];
+                    return (
+                      <WidgetInChat
+                        key={part.toolCallId}
+                        toolName={toolName}
+                        args={part.input || {}}
+                        state={part.state || "input-available"}
+                        onSave={config?.dataSaving ? async (data) => {
+                          return saveWidgetData({
+                            dataSubtype: config.dataSaving!.dataSubtype,
+                            content: data,
+                          });
+                        } : undefined}
+                        onSendToChat={config?.chatPrompt ? (text) => sendMessage({ text }) : undefined}
+                      />
+                    );
+                  })}
                 </div>
               );
             })}
             {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
               <div className="border-l-2 border-accent py-5 pl-5">
                 <p className="text-caption mb-2 uppercase tracking-wider text-muted">
-                  Philosopher Coach
+                  Daily Sage
                 </p>
                 <div className="flex gap-1 text-muted">
                   <span className="animate-pulse">.</span>
@@ -255,6 +280,10 @@ export function ChatContainer({ sessionId, initialMessages = [], initialMood, se
             onChange={setInput}
             onSubmit={onSubmit}
             isLoading={isLoading}
+            mode={chatMode}
+            onModeChange={setChatMode}
+            credits={credits}
+            creditsLoading={creditsLoading}
           />
         </div>
       )}

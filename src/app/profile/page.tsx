@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
+import { AccountActions } from "@/components/core/AccountActions";
 import { createClient } from "@/lib/supabase/server";
 import { aggregateSchoolProgress } from "@/lib/philosophy/path-tracking";
 import { philosophicalSchools } from "@/lib/philosophy/schools";
@@ -234,6 +235,9 @@ export default async function ProfilePage() {
               </div>
             </div>
           </div>
+
+          {/* Danger Zone */}
+          <AccountActions />
         </div>
       </main>
     </div>

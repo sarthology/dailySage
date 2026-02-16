@@ -4,7 +4,7 @@ export function Footer() {
       <div className="mx-auto max-w-[1200px] px-4 py-12 md:px-8">
         <div className="flex flex-col items-center gap-4 text-center">
           <p className="font-display text-lg font-semibold text-ink">
-            Philosopher Coach
+            Daily Sage
           </p>
           <p className="text-body-sm text-muted">
             Ancient wisdom. Modern clarity.
@@ -21,7 +21,7 @@ export function Footer() {
             </a>
           </div>
           <p className="text-caption text-muted mt-4">
-            &copy; {new Date().getFullYear()} Philosopher Coach
+            &copy; {new Date().getFullYear()} Daily Sage
           </p>
         </div>
       </div>

@@ -66,7 +66,7 @@ export default function SignupPage() {
       <div className="w-full max-w-sm">
         <div className="mb-10 text-center">
           <Link href="/" className="font-display text-2xl font-extrabold tracking-wide text-ink">
-            Philosopher Coach
+            Daily Sage
           </Link>
           <p className="mt-2 text-body-sm text-muted">Begin your journey.</p>
         </div>

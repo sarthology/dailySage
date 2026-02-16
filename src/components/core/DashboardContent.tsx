@@ -113,8 +113,8 @@ export function DashboardContent({
           <div className="rounded-lg border border-muted-light bg-paper-light p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-h4 text-ink">Mood Trend</h3>
-              <Link href="/moods" className="font-mono text-xs text-muted hover:text-ink transition-colors">
-                History &rarr;
+              <Link href="/journal" className="font-mono text-xs text-muted hover:text-ink transition-colors">
+                View all &rarr;
               </Link>
             </div>
             <MoodTimeline moods={recentMoods} days={14} compact />

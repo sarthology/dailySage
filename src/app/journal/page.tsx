@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { createClient } from "@/lib/supabase/server";
-import type { JournalEntry } from "@/lib/supabase/types";
+import { getMoodQuadrant } from "@/types/mood";
+import type { MoodLogRow } from "@/lib/supabase/types";
+import { JournalContent } from "./JournalContent";
 
 export default async function JournalPage() {
   const supabase = await createClient();
@@ -12,97 +13,74 @@ export default async function JournalPage() {
     redirect("/auth");
   }
 
-  const { data: entriesData } = await supabase
-    .from("journal_entries")
+  // Fetch mood logs for stats + timeline
+  const { data: moodsData } = await supabase
+    .from("mood_logs")
     .select("*")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(90);
 
-  const entries = (entriesData || []) as JournalEntry[];
+  const moods = (moodsData || []) as MoodLogRow[];
+
+  // Compute mood stats server-side
+  const totalCheckins = moods.length;
+
+  const quadrantCounts = new Map<string, number>();
+  let totalValence = 0;
+  for (const mood of moods) {
+    const q = getMoodQuadrant(mood.mood_vector);
+    quadrantCounts.set(q, (quadrantCounts.get(q) || 0) + 1);
+    totalValence += mood.mood_vector.x;
+  }
+
+  let mostCommonQuadrant = "";
+  let maxCount = 0;
+  for (const [q, count] of quadrantCounts) {
+    if (count > maxCount) {
+      mostCommonQuadrant = q;
+      maxCount = count;
+    }
+  }
+
+  const avgValence = moods.length > 0 ? totalValence / moods.length : 0;
+
+  // Streak calculation
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const uniqueDays = new Set(
+    moods.map((m) => {
+      const d = new Date(m.created_at);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    })
+  );
+  for (let i = 0; i < 90; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() - i);
+    checkDate.setHours(0, 0, 0, 0);
+    if (uniqueDays.has(checkDate.getTime())) {
+      streak++;
+    } else {
+      if (i === 0) continue;
+      break;
+    }
+  }
+  streak = Math.max(streak, moods.length > 0 ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-paper">
       <Navbar />
-      <main className="mx-auto max-w-[1200px] px-4 py-8 md:px-8 md:py-12">
-        <div className="mb-8 flex items-end justify-between">
-          <div>
-            <p className="text-caption mb-1 uppercase tracking-[0.2em] text-muted">
-              Journal
-            </p>
-            <h1 className="text-h1 text-ink">Your Reflections</h1>
-          </div>
-          <Link
-            href="/journal/new"
-            className="rounded-md bg-accent px-5 py-2 text-sm font-semibold uppercase tracking-[0.05em] text-paper-light transition-colors duration-150 hover:bg-accent-hover"
-          >
-            New Entry
-          </Link>
-        </div>
-
-        {entries.length === 0 ? (
-          <div className="rounded-lg border border-muted-light bg-paper-light p-12 text-center">
-            <p className="font-display text-lg italic text-muted">
-              &ldquo;The unexamined life is not worth living.&rdquo;
-            </p>
-            <p className="text-caption mt-3 text-muted">— Socrates</p>
-            <p className="text-body-sm mt-6 text-muted">
-              Your journal is empty. Start writing to track your philosophical journey.
-            </p>
-            <Link
-              href="/journal/new"
-              className="mt-4 inline-block rounded-md border-2 border-ink px-6 py-2.5 text-sm font-semibold uppercase tracking-[0.05em] text-ink transition-colors duration-150 hover:bg-ink hover:text-paper"
-            >
-              Write Your First Entry
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {entries.map((entry) => (
-              <Link
-                key={entry.id}
-                href={`/journal/${entry.id}`}
-                className="block rounded-lg border border-muted-light bg-paper-light p-6 transition-shadow duration-300 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body text-ink line-clamp-2">
-                      {entry.content.slice(0, 200)}
-                      {entry.content.length > 200 ? "..." : ""}
-                    </p>
-                    {entry.philosophical_tags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {entry.philosophical_tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-md bg-paper px-2 py-0.5 font-mono text-xs text-muted"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="font-mono text-xs text-muted">
-                      {new Date(entry.created_at).toLocaleDateString()}
-                    </p>
-                    {entry.ai_reflection && (
-                      <span className="mt-1 inline-block font-mono text-xs text-sage">
-                        reflected
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {entry.prompt && (
-                  <p className="mt-2 text-caption italic text-muted">
-                    Prompt: &ldquo;{entry.prompt.slice(0, 60)}...&rdquo;
-                  </p>
-                )}
-              </Link>
-            ))}
-          </div>
-        )}
-      </main>
+      <JournalContent
+        moodStats={{
+          totalCheckins,
+          streak,
+          avgValence,
+          mostCommonQuadrant,
+        }}
+        recentMoods={moods}
+      />
     </div>
   );
 }

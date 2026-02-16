@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter, JetBrains_Mono } from "next/font/google";
+import { MotionProvider } from "@/components/motion/MotionProvider";
 import "./globals.css";
 
 const playfairDisplay = Playfair_Display({
@@ -25,7 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Philosopher Coach — Ancient Wisdom. Modern Clarity.",
+  title: "Daily Sage — Ancient Wisdom. Modern Clarity.",
   description:
     "A philosophical coaching app that helps you navigate daily problems, anxiety, and emotional struggles through centuries of wisdom.",
 };
@@ -40,7 +41,7 @@ export default function RootLayout({
       <body
         className={`${playfairDisplay.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        {children}
+        <MotionProvider>{children}</MotionProvider>
       </body>
     </html>
   );

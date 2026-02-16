@@ -14,7 +14,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       className={`py-5 ${isCoach ? "border-l-2 border-accent pl-5" : "pl-0"}`}
     >
       <p className="text-caption mb-2 uppercase tracking-wider text-muted">
-        {isCoach ? "Philosopher Coach" : "You"}
+        {isCoach ? "Daily Sage" : "You"}
       </p>
       <div className="prose text-body max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>

@@ -13,7 +13,9 @@ export type WidgetType =
   | "cognitive_distortion"
   | "quote_challenge"
   | "weekly_review"
-  | "argument_mapper";
+  | "argument_mapper"
+  | "feeling_picker"
+  | "quick_prompt";
 
 export interface WidgetConfig {
   type: WidgetType;

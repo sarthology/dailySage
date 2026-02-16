@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { MoodLogRow } from "@/lib/supabase/types";
 import { getMoodQuadrant, getMoodColor } from "@/types/mood";
 
@@ -26,7 +26,20 @@ const COLOR_MAP: Record<string, string> = {
 };
 
 export function MoodTimeline({ moods, days = 30, compact = false }: MoodTimelineProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(600);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Measure actual container width for proper SVG coordinates
+  useEffect(() => {
+    if (!containerRef.current) return;
+    setWidth(containerRef.current.clientWidth);
+    const observer = new ResizeObserver(([entry]) => {
+      setWidth(entry.contentRect.width);
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   if (moods.length === 0) {
     return (
@@ -71,60 +84,80 @@ export function MoodTimeline({ moods, days = 30, compact = false }: MoodTimeline
   }
 
   const height = compact ? 80 : 140;
-  const padding = { top: 16, bottom: compact ? 8 : 24, left: 8, right: 8 };
+  const padding = { top: 16, bottom: compact ? 8 : 28, left: 12, right: 12 };
+  const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Calculate x positions
-  const chartWidth = 100; // percentage
-  const step = dayData.length > 1 ? chartWidth / (dayData.length - 1) : chartWidth;
+  // Calculate x positions using actual pixel coordinates
+  const step = dayData.length > 1 ? chartWidth / (dayData.length - 1) : 0;
 
   // Build points for the line + dots
   const points: { x: number; y: number; data: DayData }[] = [];
   dayData.forEach((d, i) => {
     if (d) {
-      // Map valence (x: -1 to 1) to y position (1 = top, -1 = bottom)
+      // Map valence (x: -1 to 1) to y position (1 = top/positive, -1 = bottom/negative)
       const valence = d.mood.mood_vector.x;
       const yNorm = (1 - valence) / 2; // 0 = top (positive), 1 = bottom (negative)
       points.push({
-        x: i * step,
+        x: padding.left + i * step,
         y: padding.top + yNorm * chartHeight,
         data: d,
       });
     }
   });
 
-  // Build line path
-  const linePath = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x}% ${p.y}`)
-    .join(" ");
+  // Build smooth line path using Catmull-Rom → cubic Bezier
+  let linePath = "";
+  if (points.length >= 2) {
+    linePath = `M ${points[0].x} ${points[0].y}`;
+    if (points.length === 2) {
+      linePath += ` L ${points[1].x} ${points[1].y}`;
+    } else {
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[Math.max(0, i - 1)];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[Math.min(points.length - 1, i + 2)];
 
-  // Date labels (every 7 days for full, none for compact)
+        const tension = 6;
+        const cp1x = p1.x + (p2.x - p0.x) / tension;
+        const cp1y = p1.y + (p2.y - p0.y) / tension;
+        const cp2x = p2.x - (p3.x - p1.x) / tension;
+        const cp2y = p2.y - (p3.y - p1.y) / tension;
+
+        linePath += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+      }
+    }
+  }
+
+  // Date labels (every 7 days for full view)
   const dateLabels: { x: number; label: string }[] = [];
   if (!compact) {
     dayData.forEach((d, i) => {
       if (i % 7 === 0 && d) {
-        dateLabels.push({ x: i * step, label: d.displayDate });
+        dateLabels.push({ x: padding.left + i * step, label: d.displayDate });
       }
     });
   }
 
+  const dotRadius = compact ? 3.5 : 4.5;
+
   return (
-    <div className="w-full">
+    <div ref={containerRef} className="w-full">
       <svg
-        viewBox={`0 0 100 ${height}`}
-        preserveAspectRatio="none"
+        viewBox={`0 0 ${width} ${height}`}
         className="w-full overflow-visible"
         style={{ height: `${height}px` }}
       >
-        {/* Grid lines */}
+        {/* Center grid line (neutral valence) */}
         <line
-          x1="0"
+          x1={padding.left}
           y1={padding.top + chartHeight / 2}
-          x2="100%"
+          x2={width - padding.right}
           y2={padding.top + chartHeight / 2}
           stroke="#d4cfc6"
-          strokeWidth="0.3"
-          strokeDasharray="2 2"
+          strokeWidth="1"
+          strokeDasharray="4 4"
         />
 
         {/* Connecting line */}
@@ -132,31 +165,32 @@ export function MoodTimeline({ moods, days = 30, compact = false }: MoodTimeline
           <path
             d={linePath}
             fill="none"
-            stroke="#d4cfc6"
-            strokeWidth="0.5"
-            vectorEffect="non-scaling-stroke"
+            stroke="#c4bfb6"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         )}
 
         {/* Dots */}
         {points.map((p, i) => {
-          const intensity = Math.max(3, (p.data.mood.intensity / 10) * 5);
+          const intensity = p.data.mood.intensity || 5;
+          const r = dotRadius + (intensity / 10) * 2;
           const isHovered = hoveredIndex === i;
 
           return (
-            <g key={i}>
-              <circle
-                cx={`${p.x}%`}
-                cy={p.y}
-                r={isHovered ? intensity + 1.5 : intensity}
-                fill={p.data.color}
-                opacity={isHovered ? 1 : 0.75}
-                className="transition-all duration-150"
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-                style={{ cursor: "pointer" }}
-              />
-            </g>
+            <circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r={isHovered ? r + 2 : r}
+              fill={p.data.color}
+              opacity={isHovered ? 1 : 0.8}
+              className="transition-all duration-150"
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={{ cursor: "pointer" }}
+            />
           );
         })}
 
@@ -164,11 +198,11 @@ export function MoodTimeline({ moods, days = 30, compact = false }: MoodTimeline
         {dateLabels.map((label, i) => (
           <text
             key={i}
-            x={`${label.x}%`}
-            y={height - 2}
+            x={label.x}
+            y={height - 4}
             textAnchor="middle"
-            className="fill-muted"
-            style={{ fontSize: "3.5px", fontFamily: "var(--font-mono)" }}
+            fill="#8a8275"
+            style={{ fontSize: "10px", fontFamily: "var(--font-mono)" }}
           >
             {label.label}
           </text>

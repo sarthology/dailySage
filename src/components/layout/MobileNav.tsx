@@ -19,16 +19,12 @@ interface MobileNavProps {
 
 const authenticatedLinks = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/session/new", label: "New Session" },
   { href: "/journal", label: "Journal" },
-  { href: "/explore", label: "Explore" },
-  { href: "/moods", label: "Moods" },
-  { href: "/paths", label: "Journey" },
+  { href: "/explore", label: "Widgets" },
   { href: "/profile", label: "Profile" },
 ];
 
 const publicLinks = [
-  { href: "/explore", label: "Explore" },
   { href: "/auth/login", label: "Sign In" },
   { href: "/auth/signup", label: "Get Started" },
 ];
@@ -60,7 +56,7 @@ export function MobileNav({ isAuthenticated }: MobileNavProps) {
       >
         <SheetHeader>
           <SheetTitle className="font-display text-lg font-extrabold tracking-wide text-ink">
-            Philosopher Coach
+            Daily Sage
           </SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col px-4">
