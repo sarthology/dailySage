@@ -10,10 +10,19 @@ const schoolNames = Object.keys(philosophicalSchools) as PhilosophicalSchool[];
 export async function POST(req: Request) {
   const { messages, context } = await req.json();
 
+  // Transform messages from useChat format to streamText format
+  const transformedMessages = messages.map((msg: any) => ({
+    role: msg.role,
+    content: msg.parts
+      ?.filter((p: any) => p.type === "text")
+      .map((p: any) => p.text)
+      .join("") || msg.content || "",
+  }));
+
   const result = streamText({
     model: getModel(),
     system: coachSystemPrompt(context || {}),
-    messages,
+    messages: transformedMessages,
     async onFinish({ text }) {
       // Auto-unlock philosophical paths based on schools mentioned in the response
       try {

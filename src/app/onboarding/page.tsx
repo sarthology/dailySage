@@ -95,15 +95,15 @@ export default function OnboardingPage() {
 
       const philosophicalProfile = await res.json();
 
-      // Save profile + onboarding status to Supabase
+      // Save profile + onboarding status to Supabase (upsert to handle existing or new users)
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id,
           onboarding_complete: true,
           philosophical_profile: philosophicalProfile,
           updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+        });
 
       if (profileError) {
         throw new Error(profileError.message);

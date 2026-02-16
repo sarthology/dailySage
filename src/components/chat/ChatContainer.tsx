@@ -8,16 +8,52 @@ import { ChatInput } from "./ChatInput";
 import { useSession } from "@/hooks/useSession";
 import { useCredits } from "@/hooks/useCredits";
 
-interface ChatContainerProps {
-  sessionId: string;
+interface StoredMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
 }
 
-export function ChatContainer({ sessionId }: ChatContainerProps) {
+interface ChatContainerProps {
+  sessionId: string;
+  initialMessages?: StoredMessage[];
+}
+
+export function ChatContainer({ sessionId, initialMessages = [] }: ChatContainerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
   const [creditError, setCreditError] = useState(false);
   const { updateSessionMessages } = useSession();
   const { canAfford, deductCredit } = useCredits();
+
+  // Helper to extract text content from message (handles both parts and content formats)
+  const getMessageContent = (message: any): string => {
+    if (typeof message.content === "string") {
+      return message.content;
+    }
+    if (message.parts) {
+      return message.parts
+        .filter((p: any) => p.type === "text")
+        .map((p: any) => p.text)
+        .join("");
+    }
+    return "";
+  };
+
+  // Convert stored messages from Supabase to UIMessage format for useChat
+  const hydratedMessages = useMemo(
+    () =>
+      initialMessages.map((m, i) => ({
+        id: `restored-${i}`,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        parts: [{ type: "text" as const, text: m.content }],
+        createdAt: new Date(m.timestamp),
+      })),
+    // Only compute once on mount — initialMessages comes from the server and won't change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   const transport = useMemo(
     () =>
@@ -28,7 +64,10 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
     [sessionId]
   );
 
-  const { messages, sendMessage, status } = useChat({ transport });
+  const { messages, sendMessage, status } = useChat({
+    transport,
+    messages: hydratedMessages,
+  });
 
   const isLoading = status === "streaming" || status === "submitted";
 
@@ -43,11 +82,7 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
     if (messages.length === 0) return;
     const serialized = messages.map((m) => ({
       role: m.role,
-      content:
-        m.parts
-          ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
-          .map((p) => p.text)
-          .join("") || "",
+      content: getMessageContent(m),
       timestamp: new Date().toISOString(),
     }));
     await updateSessionMessages(sessionId, serialized);
@@ -101,12 +136,7 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
               <ChatMessage
                 key={message.id}
                 role={message.role as "user" | "assistant"}
-                content={
-                  message.parts
-                    ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
-                    .map((p) => p.text)
-                    .join("") || ""
-                }
+                content={getMessageContent(message)}
               />
             ))}
             {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
